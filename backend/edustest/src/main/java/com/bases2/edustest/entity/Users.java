@@ -1,27 +1,20 @@
 package com.bases2.edustest.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.Id;
+import jakarta.persistence.Id;
+import lombok.*;
 
 @Data
 @Builder
-@Entity
-@Table(name = "users")
 @AllArgsConstructor
 @NoArgsConstructor
+@ToString
 public class Users {
-
     @Id
-    private int id;
-    private String name;
+    private int userId;
+    private int roleId;
+    private int locationId;
+    private String userEmail;
+    private String firstName;
     private String lastName;
-    private String email;
     private String password;
-    private String role;
-    private int courseId;
 }
