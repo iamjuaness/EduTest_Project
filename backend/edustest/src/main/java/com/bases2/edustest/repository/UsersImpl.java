@@ -10,8 +10,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.sql.*;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 @Repository
 public class UsersImpl implements UsersDao {
@@ -84,4 +83,65 @@ public class UsersImpl implements UsersDao {
         });
         return user;
     }
+
+    @Override
+    public List<Map<String, Object>> getQuestions() {
+        return jdbcTemplate.execute(
+                "{ call PKG_QUESTIONS.GET_ALL_QUESTIONS_WITH_DETAILS(?) }",
+                (CallableStatementCallback<List<Map<String, Object>>>) cs -> {
+                    cs.registerOutParameter(1, OracleTypes.CURSOR);
+                    cs.execute();
+                    try (ResultSet rs = (ResultSet) cs.getObject(1)) {
+                        Map<Long, Map<String, Object>> questionsMap = new LinkedHashMap<>();
+                        ResultSetMetaData meta = rs.getMetaData();
+                        while (rs.next()) {
+                            Long questionId = rs.getLong("QUESTION_ID");
+
+                            // Si la pregunta no existe, la creamos
+                            Map<String, Object> question = questionsMap.get(questionId);
+                            if (question == null) {
+                                question = new HashMap<>();
+                                // Agrega aquí los campos de la pregunta
+                                for (int i = 1; i <= meta.getColumnCount(); i++) {
+                                    String colName = meta.getColumnName(i);
+                                    Object value = rs.getObject(i);
+                                    if (value instanceof Clob) {
+                                        Clob clob = (Clob) value;
+                                        value = clob.getSubString(1, (int) clob.length());
+                                    }
+                                    // Solo agrega los campos de pregunta (no opciones ni ítems)
+                                    if (!colName.startsWith("OPTION_") && !colName.startsWith("ORDEN_")) {
+                                        question.put(colName, value);
+                                    }
+                                }
+                                // Inicializa la lista de opciones/ítems
+                                question.put("options", new ArrayList<Map<String, Object>>());
+                                question.put("ordenItems", new ArrayList<Map<String, Object>>());
+                                questionsMap.put(questionId, question);
+                            }
+
+                            // Si hay opción, la agregamos
+                            if (rs.getObject("OPTION_ID") != null) {
+                                Map<String, Object> option = new HashMap<>();
+                                option.put("OPTION_ID", rs.getObject("OPTION_ID"));
+                                option.put("OPTION_TEXT", rs.getObject("OPTION_TEXT"));
+                                option.put("IS_CORRECT", rs.getObject("IS_CORRECT"));
+                                ((List<Map<String, Object>>) question.get("options")).add(option);
+                            }
+
+                            // Si hay ítem de orden, lo agregamos
+                            if (rs.getObject("ORDEN_ITEM_ID") != null) {
+                                Map<String, Object> ordenItem = new HashMap<>();
+                                ordenItem.put("ORDEN_ITEM_ID", rs.getObject("ORDEN_ITEM_ID"));
+                                ordenItem.put("ITEM_TEXT", rs.getObject("ITEM_TEXT"));
+                                ordenItem.put("CORRECT_POSITION", rs.getObject("CORRECT_POSITION"));
+                                ((List<Map<String, Object>>) question.get("ordenItems")).add(ordenItem);
+                            }
+                        }
+                        return new ArrayList<>(questionsMap.values());
+                    }
+                }
+        );
+    }
+
 }

@@ -12,10 +12,7 @@ import org.springframework.context.ApplicationContext;
 public class EdustestApplication {
 
     public static void main(String[] args) {
-		ApplicationContext context = SpringApplication.run(EdustestApplication.class, args);
-		UsersImpl user = context.getBean(UsersImpl.class);
-		Users usuario = user.login("mgonzalez@uniquindio.edu.co", "a1b2c3d4");
-		System.out.println(user.getRecordById("ROLE", usuario.getRoleId()));
+		SpringApplication.run(EdustestApplication.class, args);
 	}
 
 }
